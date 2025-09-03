@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
-class RsvpController extends Controller
+class RsvpControllerFixed extends Controller
 {
     /**
      * Display the invitation page for a guest.
@@ -56,15 +56,15 @@ class RsvpController extends Controller
                 ->with('error', 'You have already responded to this invitation.');
         }
 
-        $validated = $request->validate([
+        // Validate input
+        $request->validate([
             'rsvp_status' => 'required|in:yes,no,maybe',
         ]);
 
-        // Update guest response
-        $guest->update([
-            'rsvp_status' => $validated['rsvp_status'],
-            'rsvp_confirmed_at' => now(),
-        ]);
+        // Update guest response directly
+        $guest->rsvp_status = $request->input('rsvp_status');
+        $guest->rsvp_confirmed_at = now();
+        $guest->save();
 
         return redirect()->route('rsvp.show', $token)
             ->with('success', 'Thank you for your response!');
