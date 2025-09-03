@@ -42,6 +42,17 @@
             @endif
         </div>
 
+        <!-- Debug Info (remove in production) -->
+        <div class="mt-3 p-2 bg-dark bg-opacity-25 rounded">
+            <small>
+                <strong>Debug Info:</strong><br>
+                Token: {{ $guest->unique_link_token }}<br>
+                Status: {{ $guest->rsvp_status }}<br>
+                Valid: {{ $guest->isInvitationValid() ? 'Yes' : 'No' }}<br>
+                Responded: {{ $guest->hasResponded() ? 'Yes' : 'No' }}
+            </small>
+        </div>
+
         <!-- RSVP Section -->
         <div class="rsvp-buttons text-center">
             @if(session('success'))
@@ -52,7 +63,7 @@
                 
                 <div class="mt-3">
                     <p class="h5">Your Response: 
-                        @switch($guest->rsvp_status)
+                        @switch($guest->fresh()->rsvp_status)
                             @case('yes')
                                 <span class="badge bg-success fs-6">Attending</span>
                                 @break
@@ -64,28 +75,31 @@
                                 @break
                         @endswitch
                     </p>
-                    <small class="text-white-50">Responded on {{ $guest->rsvp_confirmed_at->format('M d, Y \a\t g:i A') }}</small>
+                    @if($guest->fresh()->rsvp_confirmed_at)
+                        <small class="text-white-50">Responded on {{ $guest->fresh()->rsvp_confirmed_at->format('M d, Y \a\t g:i A') }}</small>
+                    @endif
+                </div>
+            @elseif(session('error'))
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    {{ session('error') }}
                 </div>
             @else
                 <h4 class="mb-3">Will you be attending?</h4>
                 
-                @if(session('error'))
-                    <div class="alert alert-danger" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        {{ session('error') }}
-                    </div>
-                @endif
-
-                <form action="{{ route('rsvp.submit', $guest->unique_link_token) }}" method="POST" id="rsvpForm">
+                <!-- Simple form without JavaScript interference -->
+                <form action="{{ route('rsvp.submit', $guest->unique_link_token) }}" method="POST">
                     @csrf
-                    <div class="d-flex flex-column flex-md-row justify-content-center gap-2">
-                        <button type="submit" name="rsvp_status" value="yes" class="btn rsvp-btn btn-rsvp-yes" onclick="return confirmRsvp('attending')">
+                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="rsvp_status" value="yes" class="btn rsvp-btn btn-rsvp-yes">
                             <i class="bi bi-check-circle"></i> Yes, I will attend
                         </button>
-                        <button type="submit" name="rsvp_status" value="no" class="btn rsvp-btn btn-rsvp-no" onclick="return confirmRsvp('not attending')">
+                        <button type="submit" name="rsvp_status" value="no" class="btn rsvp-btn btn-rsvp-no">
                             <i class="bi bi-x-circle"></i> No, I cannot attend
                         </button>
-                        <button type="submit" name="rsvp_status" value="maybe" class="btn rsvp-btn btn-rsvp-maybe" onclick="return confirmRsvp('maybe attending')">
+                        <button type="submit" name="rsvp_status" value="maybe" class="btn rsvp-btn btn-rsvp-maybe">
                             <i class="bi bi-question-circle"></i> Maybe
                         </button>
                     </div>
@@ -107,45 +121,4 @@
         </div>
     </div>
 </div>
-@endsection
-
-@section('scripts')
-<script>
-function confirmRsvp(status) {
-    return confirm('Are you sure you want to confirm that you will be ' + status + '?');
-}
-
-document.getElementById('rsvpForm')?.addEventListener('submit', function(e) {
-    console.log('Form submitted'); // Debug log
-    
-    const button = e.submitter;
-    const formData = new FormData(this);
-    
-    // Debug: log form data
-    console.log('RSVP Status:', formData.get('rsvp_status'));
-    console.log('CSRF Token:', formData.get('_token'));
-    console.log('Form Action:', this.action);
-    
-    // Disable button and show loading state
-    button.disabled = true;
-    const originalText = button.innerHTML;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
-    
-    // Re-enable button after 5 seconds if something goes wrong
-    setTimeout(() => {
-        button.disabled = false;
-        button.innerHTML = originalText;
-    }, 5000);
-});
-
-// Debug: Check if form exists
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('rsvpForm');
-    console.log('RSVP Form found:', !!form);
-    if (form) {
-        console.log('Form action:', form.action);
-        console.log('Form method:', form.method);
-    }
-});
-</script>
 @endsection

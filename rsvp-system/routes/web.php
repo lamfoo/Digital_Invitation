@@ -14,6 +14,7 @@ Route::get('/', function () {
 // Public RSVP routes
 Route::get('/invite/{token}', [RsvpController::class, 'show'])->name('rsvp.show');
 Route::post('/invite/{token}/rsvp', [RsvpController::class, 'submitRsvp'])->name('rsvp.submit');
+Route::get('/invite/{token}/rsvp', [RsvpController::class, 'submitRsvp'])->name('rsvp.submit.get'); // Debug route
 
 Route::get('/dashboard', function () {
     return redirect()->route('admin.events.index');
