@@ -30,7 +30,7 @@ class RsvpController extends Controller
             return view('rsvp.already-responded', compact('guest'));
         }
 
-        return view('rsvp.invitation-working', compact('guest'));
+        return view('rsvp.invitation-simple-fix', compact('guest'));
     }
 
     /**
@@ -47,26 +47,39 @@ class RsvpController extends Controller
         // Check if invitation has expired
         if (!$guest->isInvitationValid()) {
             return redirect()->route('rsvp.show', $token)
-                ->with('error', 'This invitation has expired.');
+                ->with('error', 'Este convite expirou.');
         }
 
         // Check if already responded
         if ($guest->hasResponded()) {
             return redirect()->route('rsvp.show', $token)
-                ->with('error', 'You have already responded to this invitation.');
+                ->with('error', 'Você já respondeu a este convite.');
         }
 
-        $validated = $request->validate([
-            'rsvp_status' => 'required|in:yes,no,maybe',
-        ]);
+        // Debug: Check what we received
+        $rsvpStatus = $request->input('rsvp_status');
+        
+        if (empty($rsvpStatus)) {
+            return redirect()->route('rsvp.show', $token)
+                ->with('error', 'Erro: Status do RSVP não foi recebido. Dados recebidos: ' . json_encode($request->all()));
+        }
 
-        // Update guest response
-        $guest->update([
-            'rsvp_status' => $validated['rsvp_status'],
-            'rsvp_confirmed_at' => now(),
-        ]);
+        if (!in_array($rsvpStatus, ['yes', 'no', 'maybe'])) {
+            return redirect()->route('rsvp.show', $token)
+                ->with('error', 'Erro: Status inválido recebido: ' . $rsvpStatus);
+        }
+
+        // Update guest response directly
+        $guest->rsvp_status = $rsvpStatus;
+        $guest->rsvp_confirmed_at = now();
+        $success = $guest->save();
+
+        if (!$success) {
+            return redirect()->route('rsvp.show', $token)
+                ->with('error', 'Erro ao salvar resposta. Tente novamente.');
+        }
 
         return redirect()->route('rsvp.show', $token)
-            ->with('success', 'Thank you for your response!');
+            ->with('success', 'Obrigado pela sua resposta!');
     }
 }
